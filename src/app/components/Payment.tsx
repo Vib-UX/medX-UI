@@ -3,14 +3,14 @@ import {
     useSmartAccountClient,
 } from '@account-kit/react';
 import { Button } from '@headlessui/react';
+import Image from 'next/image';
 import React from 'react';
 import toast from 'react-hot-toast';
-import { encodeUSDCOperation } from '../lib/func';
-import usdcLogo from '../../../public/assets/usdcLogo.png';
-import optimismLogo from '../../../public/assets/optimismLogo.png';
 import baseLogo from '../../../public/assets/baseLogo.svg';
 import ethereumLogo from '../../../public/assets/ethereumLogo.png';
-import Image from 'next/image';
+import optimismLogo from '../../../public/assets/optimismLogo.png';
+import usdcLogo from '../../../public/assets/usdcLogo.png';
+import { encodeUSDCOperation, getUSDCBalance } from '../lib/func';
 const chains = [
     {
         logo: optimismLogo,
@@ -33,7 +33,8 @@ const Payment = ({
     setCurrentState: React.Dispatch<React.SetStateAction<number>>;
 }) => {
     const [loading, setLoading] = React.useState(false);
-    const { client } = useSmartAccountClient({
+    const [noBalance, setNoBalance] = React.useState(false);
+    const { address, client } = useSmartAccountClient({
         type: 'LightAccount',
     });
     const { sendUserOperation } = useSendUserOperation({
@@ -69,10 +70,32 @@ const Payment = ({
         }
     };
     const [selectedIndex, setSelectedIndex] = React.useState(null);
-
+    const [loadingBalance, setLoadingBalance] = React.useState(false);
     const handleClick = (index: any) => {
         setSelectedIndex(index === selectedIndex ? null : index);
     };
+    const handleCheckBalance = async () => {
+        setLoadingBalance(true);
+        const resp = await getUSDCBalance(address);
+        if (parseInt(resp) < 1) {
+            setNoBalance(true);
+        } else {
+            setNoBalance(false);
+        }
+        setLoadingBalance(false);
+    };
+
+    React.useEffect(() => {
+        const intervalId = setInterval(() => {
+            handleCheckBalance();
+        }, 10000);
+
+        return () => clearInterval(intervalId);
+    }, []);
+
+    React.useEffect(() => {
+        handleCheckBalance();
+    }, []);
     return (
         <div className="pt-5">
             <div className="flex gap-2">
@@ -117,9 +140,26 @@ const Payment = ({
             ) : (
                 <Button
                     className="mt-10 bg-green-200 px-5 py-2  w-full rounded-lg"
-                    onClick={() => handleSubmit()}
+                    onClick={() => {
+                        if (noBalance) {
+                            const addr: any = address;
+                            navigator.clipboard.writeText(addr).then(() => {
+                                toast.success(
+                                    'Wallet Address copied to clipboard'
+                                );
+                            });
+
+                            window.open('https://faucet.circle.com/', '_blank');
+                        } else {
+                            handleSubmit();
+                        }
+                    }}
                 >
-                    Pay
+                    {loadingBalance
+                        ? 'Loading'
+                        : noBalance
+                        ? 'Get Funds'
+                        : 'Pay'}
                 </Button>
             )}
         </div>
