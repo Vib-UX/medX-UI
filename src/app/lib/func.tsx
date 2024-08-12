@@ -15,13 +15,11 @@ const schemaUID =
   "0x20351f973fdec1478924c89dfa533d8f872defa108d9c3c6512267d7e7e5dbc2";
 const usdcAddress = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"; // BaseSepolia USDC contract address
 
-export const encodeUSDCBalanceCheck = (userAddress: string) => {
-  const data = usdcInterface.encodeFunctionData("balanceOf", [userAddress]);
-
-  return {
-    target: usdcAddress,
-    data,
-  };
+export const getUSDCBalance = async (signer: any) => {
+  const userAddress = await signer.getAddress();
+  const usdcContract = new ethers.Contract(usdcAddress, usdcInterface, signer);
+  const balance = await usdcContract.balanceOf(userAddress);
+  return ethers.utils.formatUnits(balance, 6);
 };
 
 export const encodeUSDCOperation = (recipient: string, amount: number) => {
